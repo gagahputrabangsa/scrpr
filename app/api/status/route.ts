@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Firecrawl, { type Document } from "@mendable/firecrawl-js";
 import { resolvePageTitle, type CrawledPage } from "@/lib/markdown-aggregator";
+import { isRequestAuthenticated } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +58,17 @@ function normalizeDocument(doc: Document, index: number): CrawledPage {
 
 export async function GET(req: NextRequest) {
   try {
+    if (!isRequestAuthenticated(req)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Passcode required. Please unlock Smart Scraper.",
+          code: "UNAUTHORIZED",
+        },
+        { status: 401 }
+      );
+    }
+
     const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
     if (!apiKey) {
       return NextResponse.json(
@@ -140,6 +152,17 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    if (!isRequestAuthenticated(req)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Passcode required. Please unlock Smart Scraper.",
+          code: "UNAUTHORIZED",
+        },
+        { status: 401 }
+      );
+    }
+
     const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
     if (!apiKey) {
       return NextResponse.json(

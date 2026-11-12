@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Firecrawl, { type CrawlOptions } from "@mendable/firecrawl-js";
+import { isRequestAuthenticated } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -90,6 +91,17 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string)
 
 export async function POST(req: NextRequest) {
   try {
+    if (!isRequestAuthenticated(req)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Passcode required. Please unlock Smart Scraper.",
+          code: "UNAUTHORIZED",
+        },
+        { status: 401 }
+      );
+    }
+
     const apiKey = process.env.FIRECRAWL_API_KEY?.trim();
     if (!apiKey) {
       return NextResponse.json(
