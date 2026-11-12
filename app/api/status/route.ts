@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Firecrawl, { type Document } from "@mendable/firecrawl-js";
 import { resolvePageTitle, type CrawledPage } from "@/lib/markdown-aggregator";
+import { cleanDocumentationMarkdown } from "@/lib/markdown-cleaner";
 import { isRequestAuthenticated } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -39,7 +40,7 @@ function normalizeDocument(doc: Document, index: number): CrawledPage {
     doc.metadata?.ogTitle ||
     undefined;
 
-  const markdown = (doc.markdown || "").trim();
+  const markdown = cleanDocumentationMarkdown(doc.markdown || "");
 
   const title = resolvePageTitle({
     url,

@@ -1,3 +1,5 @@
+import { cleanDocumentationMarkdown } from "@/lib/markdown-cleaner";
+
 export interface CrawledPage {
   url: string;
   title: string;
@@ -167,7 +169,7 @@ export function aggregateMarkdownPages(
   const validPages: CrawledPage[] = [];
 
   for (const page of rawPages) {
-    const md = (page.markdown || "").trim();
+    const md = cleanDocumentationMarkdown(page.markdown || "");
     if (!md) continue;
     const normUrl = (page.url || rootUrl).replace(/\/+$/, "");
     if (seenUrls.has(normUrl)) continue;
@@ -175,7 +177,7 @@ export function aggregateMarkdownPages(
     validPages.push({
       ...page,
       url: page.url || rootUrl,
-      title: resolvePageTitle(page),
+      title: resolvePageTitle({ ...page, markdown: md }),
       markdown: md,
     });
   }
@@ -212,7 +214,7 @@ export function aggregateMarkdownPages(
 
   // Build Table of Contents
   const tocLines = processedPages.map(
-    (p) => `${p.index}. [${p.title}](#${p.anchor}) — \`${p.url}\` *(${p.wordCount.toLocaleString()} words / ~${p.estimatedTokens.toLocaleString()} tokens)*`
+    (p) => `${p.index}. [${p.title}](#${p.anchor}) — \`${p.url}\` *(${p.wordCount.toLocaleString("en-US")} words / ~${p.estimatedTokens.toLocaleString("en-US")} tokens)*`
   );
 
   // Build Header & Table of Contents
@@ -221,7 +223,7 @@ export function aggregateMarkdownPages(
     ``,
     `> **Root Source:** ${rootUrl}`,
     `> **Pages Consolidated:** ${processedPages.length}`,
-    `> **Total Words:** ${totalWords.toLocaleString()}`,
+    `> **Total Words:** ${totalWords.toLocaleString("en-US")}`,
     `> **Generated At:** ${generatedAt}`,
     `> **Format:** Consolidated Markdown optimized for LLM context windows`,
     ``,

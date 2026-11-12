@@ -10,6 +10,8 @@ const REQUEST_TIMEOUT_MS = 25_000;
 
 interface CrawlRequestBody {
   url?: string;
+  crawlAll?: boolean;
+  crawlEntireDomain?: boolean;
   limit?: number;
   maxDepth?: number;
   onlyMainContent?: boolean;
@@ -143,17 +145,26 @@ export async function POST(req: NextRequest) {
 
     const targetUrl = urlValidation.url;
 
-    // Sanitize numeric limits
-    const rawLimit = Number(body.limit ?? 50);
-    const limit = Number.isFinite(rawLimit)
-      ? Math.min(500, Math.max(1, Math.round(rawLimit)))
+    const crawlAll = Boolean(body.crawlAll);
+
+    // Sanitize numeric limits (when crawlAll is true, allow up to 1000 pages and max depth 10)
+    const rawLimit = Number(body.limit ?? (crawlAll ? 1000 : 50));
+    const limit = crawlAll
+      ? 1000
+      : Number.isFinite(rawLimit)
+      ? Math.min(1000, Math.max(1, Math.round(rawLimit)))
       : 50;
 
-    const rawDepth = Number(body.maxDepth ?? 3);
-    const maxDiscoveryDepth = Number.isFinite(rawDepth)
+    const rawDepth = Number(body.maxDepth ?? (crawlAll ? 10 : 3));
+    const maxDiscoveryDepth = crawlAll
+      ? 10
+      : Number.isFinite(rawDepth)
       ? Math.min(10, Math.max(1, Math.round(rawDepth)))
       : 3;
 
+    const crawlEntireDomain = crawlAll
+      ? true
+      : (body.crawlEntireDomain ?? true);
     const onlyMainContent = body.onlyMainContent ?? true;
     const allowSubdomains = body.allowSubdomains ?? false;
     const ignoreQueryParameters = body.ignoreQueryParameters ?? true;
@@ -176,6 +187,8 @@ export async function POST(req: NextRequest) {
     const crawlOptions: CrawlOptions = {
       limit,
       maxDiscoveryDepth,
+      crawlEntireDomain,
+      sitemap: "include",
       allowSubdomains,
       ignoreQueryParameters,
       deduplicateSimilarURLs: true,
@@ -185,6 +198,18 @@ export async function POST(req: NextRequest) {
         formats: ["markdown"],
         onlyMainContent,
         removeBase64Images: true,
+        excludeTags: [
+          "nav",
+          "footer",
+          "header",
+          "aside",
+          "script",
+          "style",
+          "noscript",
+          "svg",
+          "button",
+          "[role='navigation']",
+        ],
       },
     };
 
@@ -210,6 +235,8 @@ export async function POST(req: NextRequest) {
       id: crawlResponse.id,
       url: targetUrl,
       config: {
+        crawlAll,
+        crawlEntireDomain,
         limit,
         maxDepth: maxDiscoveryDepth,
         onlyMainContent,

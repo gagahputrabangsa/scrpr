@@ -118,6 +118,7 @@ export function SmartScraperClient({
   const [url, setUrl] = useState<string>("https://docs.firecrawl.dev/introduction");
   const [maxPages, setMaxPages] = useState<number>(50);
   const [crawlDepth, setCrawlDepth] = useState<number>(3);
+  const [crawlAll, setCrawlAll] = useState<boolean>(false);
   const [onlyMainContent, setOnlyMainContent] = useState<boolean>(true);
   const [allowSubdomains, setAllowSubdomains] = useState<boolean>(false);
   const [includePathsInput, setIncludePathsInput] = useState<string>("");
@@ -381,8 +382,10 @@ export function SmartScraperClient({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             url: trimmedUrl,
-            limit: maxPages,
-            maxDepth: crawlDepth,
+            limit: crawlAll ? 1000 : maxPages,
+            maxDepth: crawlAll ? 10 : crawlDepth,
+            crawlAll,
+            crawlEntireDomain: true,
             onlyMainContent,
             allowSubdomains,
             includePaths: includePaths.length > 0 ? includePaths : undefined,
@@ -441,6 +444,7 @@ export function SmartScraperClient({
       url,
       maxPages,
       crawlDepth,
+      crawlAll,
       onlyMainContent,
       allowSubdomains,
       includePathsInput,
@@ -780,7 +784,9 @@ export function SmartScraperClient({
                         <span>Max Page Limit</span>
                       </label>
                       <span className="font-mono text-xs text-emerald-400 font-semibold">
-                        {maxPages} {maxPages === 1 ? "page" : "pages"}
+                        {crawlAll
+                          ? "Crawl All (up to 1,000)"
+                          : `${maxPages} ${maxPages === 1 ? "page" : "pages"}`}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -790,9 +796,12 @@ export function SmartScraperClient({
                             key={val}
                             type="button"
                             disabled={phase === "starting" || phase === "crawling"}
-                            onClick={() => setMaxPages(val)}
+                            onClick={() => {
+                              setCrawlAll(false);
+                              setMaxPages(val);
+                            }}
                             className={`flex-1 rounded py-1 text-xs font-mono transition-colors border ${
-                              maxPages === val
+                              !crawlAll && maxPages === val
                                 ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-300 font-semibold"
                                 : "border-zinc-800 bg-zinc-900/70 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
                             }`}
@@ -800,17 +809,33 @@ export function SmartScraperClient({
                             {val}
                           </button>
                         ))}
+                        <button
+                          type="button"
+                          disabled={phase === "starting" || phase === "crawling"}
+                          onClick={() => setCrawlAll((prev) => !prev)}
+                          title="Crawl all discoverable pages across the documentation site"
+                          className={`px-2.5 rounded py-1 text-xs font-mono transition-colors border ${
+                            crawlAll
+                              ? "border-emerald-400 bg-emerald-500/25 text-emerald-200 font-bold shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                              : "border-emerald-500/30 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-500/15 hover:text-emerald-200"
+                          }`}
+                        >
+                          Crawl All
+                        </button>
                       </div>
                       <Input
                         id="max-pages-input"
                         type="number"
                         min={1}
-                        max={500}
-                        value={maxPages}
+                        max={1000}
+                        value={crawlAll ? 1000 : maxPages}
                         disabled={phase === "starting" || phase === "crawling"}
                         onChange={(e) => {
                           const v = parseInt(e.target.value, 10);
-                          if (!isNaN(v)) setMaxPages(Math.min(500, Math.max(1, v)));
+                          if (!isNaN(v)) {
+                            setCrawlAll(false);
+                            setMaxPages(Math.min(1000, Math.max(1, v)));
+                          }
                         }}
                         className="h-7 w-16 px-2 text-center font-mono text-xs bg-zinc-900 border-zinc-800"
                       />
@@ -828,7 +853,7 @@ export function SmartScraperClient({
                         <span>Max Crawl Depth</span>
                       </label>
                       <span className="font-mono text-xs text-sky-400 font-semibold">
-                        Depth {crawlDepth}
+                        {crawlAll ? "Full Depth (10x)" : `Depth ${crawlDepth}`}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -838,9 +863,12 @@ export function SmartScraperClient({
                             key={val}
                             type="button"
                             disabled={phase === "starting" || phase === "crawling"}
-                            onClick={() => setCrawlDepth(val)}
+                            onClick={() => {
+                              setCrawlAll(false);
+                              setCrawlDepth(val);
+                            }}
                             className={`flex-1 rounded py-1 text-xs font-mono transition-colors border ${
-                              crawlDepth === val
+                              !crawlAll && crawlDepth === val
                                 ? "border-sky-500/50 bg-sky-500/15 text-sky-300 font-semibold"
                                 : "border-zinc-800 bg-zinc-900/70 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
                             }`}
@@ -848,17 +876,33 @@ export function SmartScraperClient({
                             {val}x
                           </button>
                         ))}
+                        <button
+                          type="button"
+                          disabled={phase === "starting" || phase === "crawling"}
+                          onClick={() => setCrawlAll((prev) => !prev)}
+                          title="Maximum discovery depth across the entire documentation site"
+                          className={`px-2 rounded py-1 text-xs font-mono transition-colors border ${
+                            crawlAll
+                              ? "border-sky-400 bg-sky-500/25 text-sky-200 font-bold"
+                              : "border-zinc-800 bg-zinc-900/70 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                          }`}
+                        >
+                          All
+                        </button>
                       </div>
                       <Input
                         id="crawl-depth-input"
                         type="number"
                         min={1}
                         max={10}
-                        value={crawlDepth}
+                        value={crawlAll ? 10 : crawlDepth}
                         disabled={phase === "starting" || phase === "crawling"}
                         onChange={(e) => {
                           const v = parseInt(e.target.value, 10);
-                          if (!isNaN(v)) setCrawlDepth(Math.min(10, Math.max(1, v)));
+                          if (!isNaN(v)) {
+                            setCrawlAll(false);
+                            setCrawlDepth(Math.min(10, Math.max(1, v)));
+                          }
                         }}
                         className="h-7 w-16 px-2 text-center font-mono text-xs bg-zinc-900 border-zinc-800"
                       />
@@ -1050,7 +1094,9 @@ export function SmartScraperClient({
                       <span>Config Bounds</span>
                     </div>
                     <div className="mt-1 font-mono text-sm font-semibold text-zinc-200">
-                      {maxPages} max · {crawlDepth}x depth
+                      {crawlAll
+                        ? "Crawl All · 10x depth"
+                        : `${maxPages} max · ${crawlDepth}x depth`}
                     </div>
                   </div>
 
